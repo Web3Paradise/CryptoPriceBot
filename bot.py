@@ -6,21 +6,28 @@ import requests
 BOT_TOKEN = 'YOUR_BOT_TOKEN'
 
 def start(update: Update, context: CallbackContext) -> None:
+    """Handler for the /start command."""
     update.message.reply_text("Welcome to CryptoBot! Type /price <crypto_symbol> to get crypto price.")
 
 def get_crypto_price(update: Update, context: CallbackContext) -> None:
+    """Handler for the /price command."""
     try:
         crypto_symbol = context.args[0].upper()
         # Fetch crypto data from CoinGecko API
         url = f"https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids={crypto_symbol}"
         response = requests.get(url)
+        response.raise_for_status()  # Raise an exception for unsuccessful status codes
         data = response.json()
-        current_price = data[0]['current_price']
-        update.message.reply_text(f"Price of {crypto_symbol}: ${current_price:.2f}")
-    except IndexError:
-        update.message.reply_text("Please provide a valid crypto symbol. Example: /price BTC")
+        current_price = data[0].get('current_price')  # Use .get() to handle missing keys
+        if current_price is not None:
+            update.message.reply_text(f"Price of {crypto_symbol}: ${current_price:.2f}")
+        else:
+            update.message.reply_text(f"Price data not available for {crypto_symbol}")
+    except (IndexError, requests.RequestException, ValueError, KeyError):
+        update.message.reply_text("Failed to fetch price. Please try again later.")
 
 def main() -> None:
+    """Main function to start the bot."""
     updater = Updater(BOT_TOKEN)
     dispatcher = updater.dispatcher
 
